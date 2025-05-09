@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Idea Intake Chat</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin:0; padding:0; background:#f5f6fa; }
+    #app { max-width: 960px; margin:0 auto; padding:1rem; }
+    #chat-log { border:1px solid #ccc; background:white; min-height:300px; padding:1rem; overflow-y:auto; }
+    .msg { margin:0.25rem 0; }
+    .user { text-align:right; color:#006ADC; }
+    .bot { text-align:left; color:#333; }
+    #progress { list-style:none; padding:0; margin-top:1rem; display:flex; flex-wrap:wrap; gap:0.5rem; }
+    #progress li { padding:0.25rem 0.5rem; border-radius:4px; background:#e5e7eb; }
+    #progress li.done { background:#34d399; color:white; }
+    #input-area { display:flex; margin-top:1rem; }
+    #input-area input { flex:1; padding:0.5rem; }
+    #input-area button { padding:0.5rem 1rem; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <h1>Submit an AI Idea</h1>
+  <div id="chat-log"></div>
+
+  <ul id="progress"></ul>
+
+  <div id="input-area">
+    <input id="user-input" placeholder="Type a message..." autocomplete="off"/>
+    <button id="send-btn">Send</button>
+  </div>
+</div>
+
+<script>
+  // Questions required for the intake
+  const QUESTIONS = [
+    "What's the business problem?",
+    "Who are the target users?",
+    "What data do we have or need?",
+    "How would success be measured?",
+    "What systems would this integrate with?",
+    "What timeline or urgency exists?"
+  ];
+
+  // simple per‑user session tracking (no cookies)
+  const SESSION_KEY = 'sessionId';
+  let sessionId = localStorage.getItem(SESSION_KEY);
+  if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem(SESSION_KEY, sessionId);
+  }
+
+  const progressEl = document.getElementById('progress');
+  const chatLog = document.getElementById('chat-log');
+  const input = document.getElementById('user-input');
+
+  const state = { answers: {}, history: [] };
+
+  init();
+
+  function init() {
+    QUESTIONS.forEach((q, i)=> {
+      const li=document.createElement('li');
+      li.textContent = q;
+      li.id = 'q-'+i;
+      progressEl.appendChild(li);
+    });
+    botSay("Hi! Let's capture your AI idea. " + QUESTIONS[0]);
+  }
+
+  function botSay(text){
+    addMessage('bot', text);
+  }
+
+  function addMessage(role, text){
+    state.history.push({role, text});
+    const p=document.createElement('p');
+    p.className = 'msg ' + role;
+    p.textContent=text;
+    chatLog.appendChild(p);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+
+  document.getElementById('send-btn').addEventListener('click', userSend);
+  input.addEventListener('keypress', (e)=> { if(e.key==='Enter') userSend(); });
+
+  function userSend(){
+    const text=input.value.trim();
+    if(!text) return;
+    addMessage('user', text);
+    input.value='';
+    process(text);
+  }
+
+  function process(text){
+    // naive match by keyword; replace with LLM call if needed
+    QUESTIONS.forEach((q, idx)=>{
+      const key = 'q'+idx;
+      if(!state.answers[key] && text.length>10){
+        state.answers[key]=text;
+        document.getElementById('q-'+idx).classList.add('done');
+      }
+    });
+
+    const remaining = QUESTIONS.filter((q,i)=> !state.answers['q'+i]);
+    if(remaining.length){
+      botSay(remaining[0]);
+    } else {
+      botSay("Great, summarizing your idea…");
+      submitForSummary();
+    }
+  }
+
+  async function submitForSummary(){
+    try{
+      const resp = await fetch('/summarize',{
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body: JSON.stringify({sessionId, chat: state.history, answers: state.answers})
+      });
+      const data = await resp.json();
+      botSay("Here's the summary. Type *approve* to submit or *edit* to refine:\n\n" + data.summary);
+    }catch(err){
+      console.error(err);
+      botSay("Sorry, something went wrong saving your idea.");
+    }
+  }
+</script>
+</body>
+</html>
