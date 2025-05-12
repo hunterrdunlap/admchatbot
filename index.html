@@ -7,16 +7,24 @@
   <style>
     body { font-family: system-ui, sans-serif; margin:0; padding:0; background:#f5f6fa; }
     #app { max-width: 960px; margin:0 auto; padding:1rem; }
-    #chat-log { border:1px solid #ccc; background:white; min-height:300px; padding:1rem; overflow-y:auto; }
-    .msg { margin:0.25rem 0; }
-    .user { text-align:right; color:#006ADC; }
-    .bot { text-align:left; color:#333; }
-    #progress { list-style:none; padding:0; margin-top:1rem; display:flex; flex-wrap:wrap; gap:0.5rem; }
-    #progress li { padding:0.25rem 0.5rem; border-radius:4px; background:#e5e7eb; }
-    #progress li.done { background:#34d399; color:white; }
-    #input-area { display:flex; margin-top:1rem; }
-    #input-area input { flex:1; padding:0.5rem; }
-    #input-area button { padding:0.5rem 1rem; }
+    #chat-log { border:1px solid #ccc; background:white; min-height:400px; padding:1rem; overflow-y:auto; border-radius:8px; }
+    .msg { margin:0.75rem 0; padding:0.75rem; border-radius:8px; max-width:85%; }
+    .user { background:#006ADC; color:white; margin-left:auto; }
+    .bot { background:#f1f3f4; color:#333; }
+    .typing-indicator { opacity:0.7; font-style:italic; }
+    #progress { padding:1rem; margin-top:1rem; background:white; border-radius:8px; }
+    #progress h3 { margin:0 0 0.5rem 0; color:#333; }
+    .progress-item { padding:0.5rem; margin:0.25rem 0; border-radius:6px; background:#f8f9fa; border-left:4px solid #e5e7eb; }
+    .progress-item.answered { background:#e8f5e9; border-left-color:#34d399; }
+    .progress-item.current { background:#fff3cd; border-left-color:#ffc107; }
+    #input-area { display:flex; margin-top:1rem; gap:0.5rem; }
+    #input-area input { flex:1; padding:0.75rem; border:1px solid #ccc; border-radius:6px; }
+    #input-area button { padding:0.75rem 1.5rem; background:#006ADC; color:white; border:none; border-radius:6px; cursor:pointer; }
+    #input-area button:hover { background:#0056b3; }
+    #submit-container { text-align:center; margin-top:1rem; display:none; }
+    #submit-idea { padding:1rem 2rem; background:#28a745; color:white; border:none; border-radius:8px; cursor:pointer; font-size:1.1rem; }
+    #submit-idea:hover { background:#218838; }
+    .summary-box { background:#f8f9fa; border:1px solid #dee2e6; border-radius:8px; padding:1rem; margin:1rem 0; }
   </style>
 </head>
 <body>
@@ -24,26 +32,37 @@
   <h1>Submit an AI Idea</h1>
   <div id="chat-log"></div>
 
-  <ul id="progress"></ul>
+  <div id="progress">
+    <h3>Questions to Cover</h3>
+    <div id="progress-list"></div>
+  </div>
 
   <div id="input-area">
-    <input id="user-input" placeholder="Type a message..." autocomplete="off"/>
+    <input id="user-input" placeholder="Share your AI idea with me..." autocomplete="off"/>
     <button id="send-btn">Send</button>
+  </div>
+
+  <div id="submit-container">
+    <div class="summary-box">
+      <h3>Your Idea Summary</h3>
+      <div id="summary-content"></div>
+    </div>
+    <button id="submit-idea">Submit My Idea</button>
   </div>
 </div>
 
 <script>
   // Questions required for the intake
   const QUESTIONS = [
-    "What's the business problem?",
-    "Who are the target users?",
-    "What data do we have or need?",
-    "How would success be measured?",
-    "What systems would this integrate with?",
-    "What timeline or urgency exists?"
+    { id: 'problem', text: "What's the business problem?", key: 'businessProblem' },
+    { id: 'users', text: "Who are the target users?", key: 'targetUsers' },
+    { id: 'data', text: "What data do we have or need?", key: 'dataRequirements' },
+    { id: 'success', text: "How would success be measured?", key: 'successMetrics' },
+    { id: 'integration', text: "What systems would this integrate with?", key: 'systemIntegration' },
+    { id: 'timeline', text: "What timeline or urgency exists?", key: 'timeline' }
   ];
 
-  // simple per‑user session tracking (no cookies)
+  // Session management
   const SESSION_KEY = 'sessionId';
   let sessionId = localStorage.getItem(SESSION_KEY);
   if (!sessionId) {
@@ -59,79 +78,205 @@
     });
   }
 
-  const progressEl = document.getElementById('progress');
+  // DOM elements
   const chatLog = document.getElementById('chat-log');
   const input = document.getElementById('user-input');
+  const progressList = document.getElementById('progress-list');
+  const submitContainer = document.getElementById('submit-container');
+  const summaryContent = document.getElementById('summary-content');
 
-  const state = { answers: {}, history: [] };
+  // State management
+  const state = { 
+    answers: {},
+    history: [],
+    currentFocus: null,
+    summary: null
+  };
 
   init();
 
   function init() {
-    QUESTIONS.forEach((q, i)=> {
-      const li=document.createElement('li');
-      li.textContent = q;
-      li.id = 'q-'+i;
-      progressEl.appendChild(li);
+    // Create progress indicators
+    QUESTIONS.forEach((q, i) => {
+      const div = document.createElement('div');
+      div.className = 'progress-item';
+      div.id = `progress-${q.id}`;
+      div.textContent = q.text;
+      progressList.appendChild(div);
     });
-    botSay("Hi! Let's capture your AI idea. " + QUESTIONS[0]);
+
+    botSay("Hi! I'm here to help you submit your AI idea. Tell me about what you're thinking, and I'll guide you through the process by asking relevant questions as we go.");
   }
 
-  function botSay(text){
+  function botSay(text) {
     addMessage('bot', text);
   }
 
-  function addMessage(role, text){
-    state.history.push({role, text});
-    const p=document.createElement('p');
-    p.className = 'msg ' + role;
-    p.textContent=text;
-    chatLog.appendChild(p);
+  function addMessage(role, text) {
+    state.history.push({role, text, timestamp: Date.now()});
+    const div = document.createElement('div');
+    div.className = 'msg ' + role;
+    div.textContent = text;
+    chatLog.appendChild(div);
     chatLog.scrollTop = chatLog.scrollHeight;
   }
 
-  document.getElementById('send-btn').addEventListener('click', userSend);
-  input.addEventListener('keypress', (e)=> { if(e.key==='Enter') userSend(); });
-
-  function userSend(){
-    const text=input.value.trim();
-    if(!text) return;
-    addMessage('user', text);
-    input.value='';
-    process(text);
+  function showTypingIndicator() {
+    const div = document.createElement('div');
+    div.className = 'msg bot typing-indicator';
+    div.textContent = 'Thinking...';
+    div.id = 'typing-indicator';
+    chatLog.appendChild(div);
+    chatLog.scrollTop = chatLog.scrollHeight;
   }
 
-  function process(text){
-    // naive match by keyword; replace with LLM call if needed
-    QUESTIONS.forEach((q, idx)=>{
-      const key = 'q'+idx;
-      if(!state.answers[key] && text.length>10){
-        state.answers[key]=text;
-        document.getElementById('q-'+idx).classList.add('done');
-      }
-    });
+  function removeTypingIndicator() {
+    const indicator = document.getElementById('typing-indicator');
+    if (indicator) indicator.remove();
+  }
 
-    const remaining = QUESTIONS.filter((q,i)=> !state.answers['q'+i]);
-    if(remaining.length){
-      botSay(remaining[0]);
-    } else {
-      botSay("Great, summarizing your idea…");
-      submitForSummary();
+  // Event listeners
+  document.getElementById('send-btn').addEventListener('click', userSend);
+  input.addEventListener('keypress', (e) => { if(e.key === 'Enter') userSend(); });
+  document.getElementById('submit-idea').addEventListener('click', submitIdea);
+
+  function userSend() {
+    const text = input.value.trim();
+    if (!text) return;
+    addMessage('user', text);
+    input.value = '';
+    processUserInput(text);
+  }
+
+  async function processUserInput(text) {
+    showTypingIndicator();
+    
+    try {
+      // Send to agent endpoint for processing
+      const response = await fetch('/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          message: text,
+          history: state.history,
+          answers: state.answers,
+          questions: QUESTIONS
+        })
+      });
+
+      const data = await response.json();
+      removeTypingIndicator();
+
+      if (data.error) {
+        botSay("Sorry, I'm having trouble processing that. Could you rephrase?");
+        return;
+      }
+
+      // Update state based on agent response
+      if (data.extractedAnswers) {
+        updateAnswers(data.extractedAnswers);
+      }
+
+      // Show agent's response
+      if (data.response) {
+        botSay(data.response);
+      }
+
+      // Update current focus
+      if (data.currentFocus) {
+        updateCurrentFocus(data.currentFocus);
+      }
+
+      // Check if all questions are answered
+      if (data.allAnswered) {
+        generateSummary();
+      }
+
+    } catch (error) {
+      removeTypingIndicator();
+      console.error('Error processing input:', error);
+      botSay("I'm sorry, something went wrong. Please try again.");
     }
   }
 
-  async function submitForSummary(){
-    try{
-      const resp = await fetch('/summarize',{
-        method:'POST',
-        headers:{'content-type':'application/json'},
-        body: JSON.stringify({sessionId, chat: state.history, answers: state.answers})
+  function updateAnswers(newAnswers) {
+    Object.assign(state.answers, newAnswers);
+    updateProgressDisplay();
+  }
+
+  function updateCurrentFocus(questionId) {
+    state.currentFocus = questionId;
+    updateProgressDisplay();
+  }
+
+  function updateProgressDisplay() {
+    QUESTIONS.forEach(q => {
+      const element = document.getElementById(`progress-${q.id}`);
+      element.className = 'progress-item';
+      
+      if (state.answers[q.key]) {
+        element.classList.add('answered');
+      } else if (state.currentFocus === q.id) {
+        element.classList.add('current');
+      }
+    });
+  }
+
+  async function generateSummary() {
+    showTypingIndicator();
+    
+    try {
+      const response = await fetch('/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          chat: state.history,
+          answers: state.answers
+        })
       });
-      const data = await resp.json();
-      botSay("Here's the summary. Type *approve* to submit or *edit* to refine:\n\n" + data.summary);
-    }catch(err){
-      console.error(err);
-      botSay("Sorry, something went wrong saving your idea.");
+
+      const data = await response.json();
+      removeTypingIndicator();
+
+      if (data.summary) {
+        state.summary = data.summary;
+        summaryContent.innerHTML = `<pre>${data.summary}</pre>`;
+        submitContainer.style.display = 'block';
+        botSay("Great! I've created a summary of your idea. Please review it above and click 'Submit My Idea' when you're ready.");
+      }
+    } catch (error) {
+      removeTypingIndicator();
+      console.error('Error generating summary:', error);
+      botSay("Sorry, I couldn't generate a summary. Please try again.");
+    }
+  }
+
+  async function submitIdea() {
+    try {
+      // Here you would send to your storage endpoint
+      const response = await fetch('/store-idea', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          answers: state.answers,
+          history: state.history,
+          summary: state.summary
+        })
+      });
+
+      if (response.ok) {
+        botSay("Perfect! Your idea has been submitted successfully. Thank you!");
+        document.getElementById('submit-idea').disabled = true;
+        document.getElementById('submit-idea').textContent = 'Submitted ✓';
+      } else {
+        botSay("Sorry, there was an error submitting your idea. Please try again.");
+      }
+    } catch (error) {
+      console.error('Error submitting idea:', error);
+      botSay("Sorry, something went wrong. Please try again.");
     }
   }
 </script>
