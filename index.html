@@ -87,7 +87,7 @@
 
   // State management
   const state = { 
-    answers: {},
+    answers: {}, // Will store { text: '...', quality: 0 }
     history: [],
     currentFocus: null,
     summary: null
@@ -201,7 +201,12 @@
   }
 
   function updateAnswers(newAnswers) {
-    Object.assign(state.answers, newAnswers);
+    // newAnswers will be like: { businessProblem: { text: "...", quality: 4 } }
+    for (const key in newAnswers) {
+      if (newAnswers.hasOwnProperty(key)) {
+        state.answers[key] = newAnswers[key];
+      }
+    }
     updateProgressDisplay();
   }
 
@@ -213,10 +218,18 @@
   function updateProgressDisplay() {
     QUESTIONS.forEach(q => {
       const element = document.getElementById(`progress-${q.id}`);
-      element.className = 'progress-item';
+      element.className = 'progress-item'; // Reset classes
+      element.style.backgroundColor = ''; // Reset background color
+      element.style.borderLeftColor = ''; // Reset border color
       
-      if (state.answers[q.key]) {
-        element.classList.add('answered');
+      if (state.answers[q.key] && state.answers[q.key].text) {
+        if (state.answers[q.key].quality < 3) {
+          element.classList.add('answered'); 
+          element.style.backgroundColor = '#fffde7'; // Light yellow for low quality
+          element.style.borderLeftColor = '#ffeb3b'; // Darker yellow border
+        } else {
+          element.classList.add('answered'); // Green for good quality (uses default .answered styles)
+        }
       } else if (state.currentFocus === q.id) {
         element.classList.add('current');
       }
@@ -233,7 +246,7 @@
         body: JSON.stringify({
           sessionId,
           chat: state.history,
-          answers: state.answers
+          answers: state.answers // Pass the full answers object
         })
       });
 
@@ -256,12 +269,14 @@
   async function submitIdea() {
     try {
       // Here you would send to your storage endpoint
+      // Ensure answers are sent in a format the backend expects, likely just the text.
+      // Or, modify backend to store quality too. For now, let's assume we send everything.
       const response = await fetch('/store-idea', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-          answers: state.answers,
+          answers: state.answers, // Sending full answer objects including quality
           history: state.history,
           summary: state.summary
         })
