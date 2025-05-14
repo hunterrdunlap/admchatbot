@@ -18,10 +18,27 @@
       --gator-progress-current: #C6DACC; /* A lighter shade for current question */
       --gator-user-msg-bg: #5E8C6A;
       --gator-bot-msg-bg: #E8F5E9;
+      --input-area-height: 70px; /* Estimated height of the input area */
     }
 
-    body { font-family: system-ui, sans-serif; margin:0; padding:0; background: var(--gator-bg); color: var(--gator-text-on-light); }
-    #app { max-width: 960px; margin:2rem auto; padding:1rem; background: var(--gator-light); border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+    body { 
+      font-family: system-ui, sans-serif; 
+      margin: 0; 
+      padding: 0; 
+      padding-bottom: var(--input-area-height); /* Add padding to account for fixed input */
+      background: var(--gator-bg); 
+      color: var(--gator-text-on-light);
+    }
+    
+    #app { 
+      max-width: 960px; 
+      margin: 2rem auto; 
+      padding: 1rem; 
+      background: var(--gator-light); 
+      border-radius: 12px; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      margin-bottom: calc(2rem + var(--input-area-height)); /* Add space at bottom */
+    }
     
     #logo-container { text-align: center; margin-bottom: 1rem; }
     #logo-container img { max-width: 150px; height: auto; border-radius: 8px; /* Optional: if you want rounded corners for the image itself */ }
@@ -40,7 +57,32 @@
     .progress-item.low-quality-answered { background:#fffde7; border-left-color:#ffeb3b; color: #5b5100; }
     .progress-item.current { background:var(--gator-progress-current); border-left-color:var(--gator-button); color: var(--gator-text-on-light); font-weight: bold;}
 
-    #input-area { display:flex; margin-top:1rem; gap:0.5rem; }
+    #input-area { 
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      background: var(--gator-light);
+      display: flex; 
+      padding: 1rem;
+      gap: 0.5rem; 
+      box-sizing: border-box;
+      border-top: 1px solid var(--gator-accent);
+      box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+      z-index: 1000;
+    }
+    
+    @media (min-width: 960px) {
+      /* For larger screens, match the app width */
+      #input-area {
+        max-width: 960px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-radius: 0 0 12px 12px;
+      }
+    }
+
     #input-area textarea, #input-area input { /* Combined for similar styling */
       flex:1;
       padding:0.85rem;
