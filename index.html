@@ -122,10 +122,53 @@
 
     h1 { color: var(--gator-button); text-align: center; margin-bottom: 0.5rem;}
 
+    #clock-id-view {
+      max-width: 400px;
+      margin: 5rem auto;
+      padding: 2rem;
+      background: var(--gator-light);
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      text-align: center;
+    }
+    #clock-id-view h2 {
+      color: var(--gator-button);
+      margin-bottom: 1rem;
+    }
+    #clock-id-input {
+      width: calc(100% - 2rem);
+      padding: 0.85rem;
+      margin-bottom: 1rem;
+      border:1px solid var(--gator-accent);
+      border-radius:6px;
+      background: white;
+      color: var(--gator-text-on-light);
+      line-height: 1.5em;
+      box-sizing: border-box;
+    }
+    #submit-clock-id-btn {
+      padding:0.85rem 1.5rem;
+      background:var(--gator-button);
+      color:var(--gator-text-on-dark);
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
+      font-weight: bold;
+      transition: background-color 0.2s ease;
+    }
+    #submit-clock-id-btn:hover { background:var(--gator-button-hover); }
+
   </style>
 </head>
 <body>
-<div id="app">
+
+<div id="clock-id-view">
+  <h2>Enter Your Clock ID</h2>
+  <input type="text" id="clock-id-input" placeholder="Your Clock ID">
+  <button id="submit-clock-id-btn">Start</button>
+</div>
+
+<div id="app" style="display: none;"> 
   <div id="logo-container">
     <!-- Assuming logo.png is in the same directory or an accessible path -->
     <img src="Dapper Alligator in Business Suit.png" alt="ADM Alligator Agent Logo"> 
@@ -161,12 +204,14 @@
 <script>
   // Questions required for the intake
   const QUESTIONS = [
-    { id: 'problem', text: "What's the business problem?", key: 'businessProblem' },
-    { id: 'users', text: "Who are the target users?", key: 'targetUsers' },
-    { id: 'data', text: "What data do we have or need?", key: 'dataRequirements' },
-    { id: 'success', text: "How would success be measured?", key: 'successMetrics' },
-    { id: 'integration', text: "What systems would this integrate with?", key: 'systemIntegration' },
-    { id: 'timeline', text: "What timeline or urgency exists?", key: 'timeline' }
+    { id: 'taskToImprove', text: "What specific task or process are you trying to improve with AI?", key: 'taskToImprove' },
+    { id: 'currentProcess', text: "How is this task currently done today?", key: 'currentProcess' },
+    { id: 'timeEffort', text: "Roughly how much time or effort does this task take per month?", key: 'timeEffort' },
+    { id: 'benefitingTeam', text: "Which team or segment benefits from this idea?", key: 'benefitingTeam' },
+    { id: 'successMeasurement', text: "How would you know if AI helped solve this problem?", key: 'successMeasurement' },
+    { id: 'dataSources', text: "What systems, documents, emails, forms, or data sources are part of the current process?", key: 'dataSources' },
+    { id: 'unintendedOutcomes', text: "Imagine this AI system was deployed - what unintended outcomes might occur? Or what could go wrong or backfire with this AI solution?", key: 'unintendedOutcomes' },
+    { id: 'aiCandidacy', text: "What makes this a good candidate for AI?", key: 'aiCandidacy' }
   ];
 
   // Session management
@@ -193,9 +238,12 @@
   const summaryContent = document.getElementById('summary-content');
   const appDiv = document.getElementById('app'); // Main app container
   const thankYouView = document.getElementById('thank-you-view'); // Thank you view
+  const clockIdView = document.getElementById('clock-id-view');
+  const clockIdInput = document.getElementById('clock-id-input');
 
   // State management
-  const state = { 
+  const state = {
+    clockId: null, // Added clockId
     answers: {}, // Will store { text: '...', quality: 0 }
     history: [],
     currentFocus: null,
@@ -249,6 +297,7 @@
   document.getElementById('send-btn').addEventListener('click', userSend);
   input.addEventListener('keypress', (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); userSend(); } });
   document.getElementById('submit-idea').addEventListener('click', submitIdea);
+  document.getElementById('submit-clock-id-btn').addEventListener('click', submitClockId);
 
   // Auto-resize for textarea
   input.addEventListener('input', () => {
@@ -275,6 +324,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
+          clockId: state.clockId, // Add clockId
           message: text,
           history: state.history,
           answers: state.answers,
@@ -360,6 +410,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
+          clockId: state.clockId, // Add clockId
           chat: state.history,
           answers: state.answers // Pass the full answers object
         })
@@ -391,6 +442,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
+          clockId: state.clockId, // Add clockId
           answers: state.answers, // Sending full answer objects including quality
           history: state.history,
           summary: state.summary
@@ -419,26 +471,25 @@
     state.history = [];
     state.summary = null;
     state.currentFocus = null;
-
-    // Generate new session ID
-    localStorage.removeItem(SESSION_KEY);
-    sessionId = generateSessionId();
-    localStorage.setItem(SESSION_KEY, sessionId);
+    // state.clockId remains for this browser session unless explicitly cleared or page reloaded for a new user
+    // No need to generate new session ID here as it's tied to browser storage and not idea submission count
 
     // Clear UI elements
     chatLog.innerHTML = '';
-    progressList.innerHTML = ''; // Clear old progress items
+    progressList.innerHTML = '';
     summaryContent.innerHTML = '';
-    
-    // Reset input field
     input.value = '';
     input.style.height = 'auto';
 
-    // Hide thank you view, show app
+    // Hide thank you view, show main app view
     thankYouView.style.display = 'none';
-    appDiv.style.display = 'block'; // Assuming 'block' is the default display for #app
+    // appDiv.style.display = 'block'; // We will show clockId view instead
+    
+    // Instead of showing appDiv, show clockIdView
+    clockIdView.style.display = 'block';
+    appDiv.style.display = 'none'; // Ensure app is hidden
+    clockIdInput.value = ''; // Clear clock ID input field
 
-    // Hide submit container and re-enable submit button (if it was part of appDiv)
     submitContainer.style.display = 'none';
     const submitIdeaBtn = document.getElementById('submit-idea');
     if (submitIdeaBtn) {
@@ -446,14 +497,27 @@
         submitIdeaBtn.textContent = 'Submit My Idea';
     }
     
-    // Re-initialize critical parts like progress list and first bot message
-    init(); // This will recreate progress items and send the first bot message
+    // initChatSession() will be called after a new clock ID is submitted.
+    // No need to call updateProgressDisplay here as progress items aren't created yet.
   }
   
   document.getElementById('submit-another-btn').addEventListener('click', resetAndStartNewIdea);
 
-  // Ensure progress display is updated on first load if there's existing state (though unlikely with current setup)
-  updateProgressDisplay(); 
+  function submitClockId() {
+    const clockId = clockIdInput.value.trim();
+    if (!clockId) {
+      alert("Please enter your Clock ID."); // Or a more styled notification
+      return;
+    }
+    state.clockId = clockId;
+    clockIdView.style.display = 'none';
+    appDiv.style.display = 'block';
+    initChatSession(); // Initialize chat after getting clock ID
+  }
+
+  // Initial setup: Check if a clock ID flow is needed or how to start.
+  // For now, we explicitly start with the clock ID view.
+  // updateProgressDisplay(); // Not needed here, called in initChatSession
 </script>
 </body>
 </html>
