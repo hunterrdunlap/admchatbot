@@ -122,7 +122,7 @@
 
     .summary-box { background:white; border:1px solid var(--gator-accent); border-radius:8px; padding:1rem; margin:1rem 0; }
     .summary-box h3 { color: var(--gator-text-on-light); }
-    #summary-content pre {
+    .summary-box pre {
       white-space: pre-wrap;      
       white-space: -moz-pre-wrap; 
       white-space: -pre-wrap;     
@@ -538,9 +538,9 @@
     // appDiv.style.display = 'block'; // We will show clockId view instead
     
     // Instead of showing appDiv, show clockIdView
-    clockIdView.style.display = 'block';
-    appDiv.style.display = 'none'; // Ensure app is hidden
-    clockIdInput.value = ''; // Clear clock ID input field
+    // clockIdView.style.display = 'block'; // No longer show clockIdView
+    appDiv.style.display = 'block'; // Show the main app view directly
+    // clockIdInput.value = ''; // No longer clear/show clockIdInput
 
     submitContainer.style.display = 'none';
     const submitIdeaBtn = document.getElementById('submit-idea');
@@ -549,8 +549,8 @@
         submitIdeaBtn.textContent = 'Submit My Idea';
     }
     
-    // initChatSession() will be called after a new clock ID is submitted.
-    // No need to call updateProgressDisplay here as progress items aren't created yet.
+    init(); // Re-initialize the chat and questions
+    // updateProgressDisplay(); // Not needed here as init() calls it.
   }
   
   document.getElementById('submit-another-btn').addEventListener('click', resetAndStartNewIdea);
@@ -564,7 +564,7 @@
     state.clockId = clockId;
     clockIdView.style.display = 'none';
     appDiv.style.display = 'block';
-    initChatSession(); // Initialize chat after getting clock ID
+    init(); // Initialize chat after getting clock ID
   }
 
   // Initial setup: Check if a clock ID flow is needed or how to start.
