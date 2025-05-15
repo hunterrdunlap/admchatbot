@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - ADM Alligator Agent</title>
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+    #admin-container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h1 { color: #5E8C6A; }
+    table.dataTable thead th, table.dataTable thead td { background-color: #E8F5E9; border-bottom: 2px solid #A8C09F; }
+    table.dataTable tfoot th, table.dataTable tfoot td { background-color: #E8F5E9; border-top: 2px solid #A8C09F; }
+    .dt-button, button#exportCsvBtn {
+      background-color: #5E8C6A; color: white; border: none; padding: 10px 15px;
+      border-radius: 5px; cursor: pointer; font-size: 0.9em; margin-bottom: 10px;
+    }
+    .dt-button:hover, button#exportCsvBtn:hover { background-color: #4A7055; }
+    #exportCsvBtn { margin-left: 10px; }
+  </style>
+</head>
+<body>
+
+<div id="admin-container">
+  <h1>Project Ideas - Admin Dashboard</h1>
+  <button id="exportCsvBtn">Export to CSV</button>
+  <table id="ideasTable" class="display" style="width:100%">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Session ID</th>
+        <th>Clock ID</th>
+        <th>Summary</th>
+        <th>Task to Improve</th>
+        <th>Task Quality</th>
+        <th>Current Process</th>
+        <th>Process Quality</th>
+        <th>Time/Effort</th>
+        <th>Effort Quality</th>
+        <th>Benefiting Team</th>
+        <th>Team Quality</th>
+        <th>Success Measurement</th>
+        <th>Success Quality</th>
+        <th>Data Sources</th>
+        <th>Data Quality</th>
+        <th>Unintended Outcomes</th>
+        <th>Outcomes Quality</th>
+        <th>AI Candidacy</th>
+        <th>Candidacy Quality</th>
+        <th>Timestamp</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script>
+$(document).ready(function() {
+  const columns = [
+    { data: 'id', title: 'ID' }, // Assuming there's an auto-increment ID
+    { data: 'sessionId', title: 'Session ID' },
+    { data: 'clockId', title: 'Clock ID' },
+    { data: 'summary', title: 'Summary' },
+    { data: 'taskToImprove_text', title: 'Task to Improve' },
+    { data: 'taskToImprove_quality', title: 'Task Quality' },
+    { data: 'currentProcess_text', title: 'Current Process' },
+    { data: 'currentProcess_quality', title: 'Process Quality' },
+    { data: 'timeEffort_text', title: 'Time/Effort' },
+    { data: 'timeEffort_quality', title: 'Effort Quality' },
+    { data: 'benefitingTeam_text', title: 'Benefiting Team' },
+    { data: 'benefitingTeam_quality', title: 'Team Quality' },
+    { data: 'successMeasurement_text', title: 'Success Measurement' },
+    { data: 'successMeasurement_quality', title: 'Success Quality' },
+    { data: 'dataSources_text', title: 'Data Sources' },
+    { data: 'dataSources_quality', title: 'Data Quality' },
+    { data: 'unintendedOutcomes_text', title: 'Unintended Outcomes' },
+    { data: 'unintendedOutcomes_quality', title: 'Outcomes Quality' },
+    { data: 'aiCandidacy_text', title: 'AI Candidacy' },
+    { data: 'aiCandidacy_quality', title: 'Candidacy Quality' },
+    // Assuming your D1 table auto-generates a timestamp or you add one.
+    // If not, this column might be null or you can remove it.
+    { 
+      data: 'timestamp', // Or 'createdAt', 'insertedAt', etc.
+      title: 'Timestamp',
+      render: function(data) {
+        return data ? new Date(data).toLocaleString() : 'N/A';
+      }
+    } 
+  ];
+
+  const table = $('#ideasTable').DataTable({
+    ajax: {
+      url: '/admin/data', // Your new endpoint
+      dataSrc: '' // As the data is an array of objects
+    },
+    columns: columns,
+    pageLength: 10,
+    lengthMenu: [ [10, 25, 50, -1], [10, 25, 50, "All"] ],
+    responsive: true,
+    // Add search panes or other features if desired
+  });
+
+  // CSV Export Functionality
+  $('#exportCsvBtn').on('click', function() {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    
+    // Header row
+    const header = columns.map(col => col.title);
+    csvContent += header.join(",") + "\r\n";
+
+    // Data rows (from current table view - respects filtering)
+    table.rows({ search: 'applied' }).data().each(function(row) {
+      let rowArray = [];
+      columns.forEach(function(col) {
+        let cellData = row[col.data] !== null && row[col.data] !== undefined ? row[col.data] : '';
+        // Escape quotes and handle commas within data
+        if (typeof cellData === 'string') {
+          cellData = cellData.replace(/"/g, '""'); // Escape double quotes
+          if (cellData.includes(',')) {
+            cellData = `"${cellData}"`; // Enclose in quotes if contains comma
+          }
+        }
+        rowArray.push(cellData);
+      });
+      csvContent += rowArray.join(",") + "\r\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "project_ideas_export.csv");
+    document.body.appendChild(link); 
+    link.click();
+    document.body.removeChild(link);
+  });
+});
+</script>
+</body>
+</html> 
