@@ -299,6 +299,8 @@
   init();
 
   function init() {
+    progressList.innerHTML = ''; // Clear previous progress items before repopulating
+
     // Create progress indicators
     QUESTIONS.forEach((q, i) => {
       const div = document.createElement('div');
