@@ -240,6 +240,10 @@
 <div id="thank-you-view">
   <h2>Thank You!</h2>
   <p>Your AI idea has been successfully submitted.</p>
+  <div class="summary-box" id="thank-you-summary-container" style="margin-top: 1rem; text-align: left;">
+    <h3>Your Idea Summary</h3>
+    <pre id="thank-you-summary-content"></pre>
+  </div>
   <button id="submit-another-btn">Submit Another Idea</button>
 </div>
 
@@ -464,8 +468,7 @@
       if (data.summary) {
         state.summary = data.summary;
         summaryContent.innerHTML = `<pre>${data.summary}</pre>`;
-        submitContainer.style.display = 'block';
-        botSay("Great! I've created a summary of your idea. Please review it above and click 'Submit My Idea' when you're ready.");
+        submitIdea();
       }
     } catch (error) {
       removeTypingIndicator();
@@ -493,6 +496,7 @@
 
       if (response.ok) {
         // Hide app, show thank you view
+        document.getElementById('thank-you-summary-content').textContent = state.summary; // Display summary
         appDiv.style.display = 'none';
         thankYouView.style.display = 'block';
         // The old botSay and button disabling are not needed here anymore
@@ -522,6 +526,12 @@
     summaryContent.innerHTML = '';
     input.value = '';
     input.style.height = 'auto';
+
+    // Clear summary from thank you view as well
+    const thankYouSummary = document.getElementById('thank-you-summary-content');
+    if (thankYouSummary) {
+      thankYouSummary.textContent = '';
+    }
 
     // Hide thank you view, show main app view
     thankYouView.style.display = 'none';
