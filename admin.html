@@ -286,26 +286,46 @@ $(document).ready(function() {
       return;
     }
     
-    // Store password for data requests
-    sessionStorage.setItem('adminPassword', password);
-    
-    // Attempt to load data with the provided password
-    loadData(password);
+    // Use a POST request to authenticate instead of putting password in URL
+    $.ajax({
+      url: '/admin/auth',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ password: password }),
+      success: function(response) {
+        if (response.token) {
+          // Store token (not password) for future API calls
+          sessionStorage.setItem('adminToken', response.token);
+          
+          // Now fetch data using the token
+          loadDataWithToken(response.token);
+        } else {
+          $("#error-message").show();
+        }
+      },
+      error: function() {
+        $("#error-message").show();
+        sessionStorage.removeItem('adminToken');
+      }
+    });
   });
   
-  // Check if we have a stored password and attempt auto-login
-  const storedPassword = sessionStorage.getItem('adminPassword');
-  if (storedPassword) {
-    loadData(storedPassword);
+  // Check if we have a stored token and attempt auto-login
+  const storedToken = sessionStorage.getItem('adminToken');
+  if (storedToken) {
+    loadDataWithToken(storedToken);
   }
   
-  function loadData(password) {
-    // Fetch data with password
+  function loadDataWithToken(token) {
+    // Fetch data with token in the Authorization header
     $.ajax({
-      url: `/admin/data?password=${encodeURIComponent(password)}`,
+      url: '/admin/data',
       method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
       success: function(data) {
-        // Password was correct, show dashboard
+        // Token was valid, show dashboard
         $("#login-container").hide();
         $("#admin-container").show();
         
@@ -313,9 +333,12 @@ $(document).ready(function() {
         initializeDashboard(data);
       },
       error: function(xhr) {
-        // Password was incorrect
+        // Token was invalid or expired
+        $("#error-message").text("Session expired. Please login again.");
         $("#error-message").show();
-        sessionStorage.removeItem('adminPassword');
+        $("#login-container").show();
+        $("#admin-container").hide();
+        sessionStorage.removeItem('adminToken');
       }
     });
   }
