@@ -159,8 +159,8 @@ $(document).ready(function() {
   
   // Text renderer for truncation
   function renderTruncatedText(data, type, row, meta) {
-    if (type === 'display' && data && data.length > 50) {
-      return `<div class="truncate-text" title="Click to view full text">${data.substring(0, 50)}...</div>`;
+    if (type === 'display' && data) {
+      return `<div class="truncate-text" title="Click to view full text" data-full-text="${encodeURIComponent(data)}">${data.substring(0, 50)}${data.length > 50 ? '...' : ''}</div>`;
     }
     return data;
   }
@@ -314,10 +314,9 @@ $(document).ready(function() {
 
   // Add click event for truncated text to show modal
   $('#ideasTable tbody').on('click', '.truncate-text', function() {
-    const data = table.row($(this).closest('tr')).data();
+    const fullText = decodeURIComponent($(this).attr('data-full-text'));
     const columnIndex = table.cell($(this).closest('td')).index().column;
     const columnName = columns[columnIndex].title;
-    const fullText = table.cell($(this).closest('td')).data();
     
     showFullText(columnName, fullText);
   });
