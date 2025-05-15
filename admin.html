@@ -86,6 +86,67 @@
       white-space: normal;
       word-break: break-word;
     }
+    
+    /* Style for the responsive child rows */
+    .child tr td:first-child {
+      width: 150px;
+      font-weight: bold;
+      vertical-align: top;
+      padding-right: 10px;
+    }
+    
+    .child tr td:last-child {
+      white-space: normal;
+      word-break: break-word;
+    }
+    
+    /* Make the child rows better spaced */
+    .child table {
+      width: 100%;
+    }
+    
+    .child tr {
+      border-bottom: 1px solid #eee;
+    }
+    
+    .child tr:last-child {
+      border-bottom: none;
+    }
+    
+    /* Add styles for height-restricted cells with ellipsis */
+    .height-restricted {
+      max-height: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 4; /* Restrict to 4 lines */
+      -webkit-box-orient: vertical;
+      cursor: pointer;
+      position: relative;
+    }
+    
+    .height-restricted::after {
+      content: "...";
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      background-color: white;
+      padding: 0 4px;
+    }
+    
+    /* Update modal styles to show related quality score */
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    
+    .modal-quality {
+      margin-left: 15px;
+    }
   </style>
 </head>
 <body>
@@ -128,7 +189,10 @@
 <div id="textModal" class="modal">
   <div class="modal-content">
     <span class="close-modal">&times;</span>
-    <h3 id="modal-title">Full Text</h3>
+    <div class="modal-header">
+      <h3 id="modal-title">Full Text</h3>
+      <div id="modal-quality"></div>
+    </div>
     <p id="modal-text"></p>
   </div>
 </div>
@@ -142,6 +206,7 @@ $(document).ready(function() {
   const modal = document.getElementById("textModal");
   const modalTitle = document.getElementById("modal-title");
   const modalText = document.getElementById("modal-text");
+  const modalQuality = document.getElementById("modal-quality");
   const closeModal = document.getElementsByClassName("close-modal")[0];
   
   closeModal.onclick = function() {
@@ -155,9 +220,21 @@ $(document).ready(function() {
   }
   
   // Function to show full text in modal
-  function showFullText(title, text) {
+  function showFullText(title, text, quality) {
     modalTitle.textContent = title;
     modalText.textContent = text;
+    
+    // Set the quality score if available
+    if (quality !== undefined) {
+      let className = "quality-med";
+      if (quality >= 4) className = "quality-high";
+      if (quality <= 2) className = "quality-low";
+      modalQuality.innerHTML = `<span class="quality-score ${className}">${quality}</span>`;
+      modalQuality.style.display = "block";
+    } else {
+      modalQuality.style.display = "none";
+    }
+    
     modal.style.display = "block";
   }
   
@@ -172,10 +249,10 @@ $(document).ready(function() {
     return `<span class="quality-score ${className}">${quality}</span>`;
   }
   
-  // Text renderer for full text display with click capability
-  function renderFullTextWithClick(data, type, row, meta) {
+  // Text renderer for height-restricted text with click capability
+  function renderHeightRestrictedText(data, type, row, meta) {
     if (type === 'display' && data) {
-      return `<div class="full-text-cell" title="Click to view in popup">${data}</div>`;
+      return `<div class="height-restricted full-text-cell" title="Click to view in popup">${data}</div>`;
     }
     return data;
   }
@@ -184,25 +261,24 @@ $(document).ready(function() {
     { data: 'id', title: 'ID', width: "40px" },
     { data: 'clockId', title: 'Clock ID', width: "70px" },
     { 
-      data: 'createdAt', // Changed from timestamp to createdAt
+      data: 'createdAt',
       title: 'Date',
       width: "100px",
       render: function(data) {
         if (!data) return 'N/A';
-        // Format the date nicely
-        const date = new Date(data.replace(' ', 'T')); // Convert MySQL datetime to JS Date
+        const date = new Date(data.replace(' ', 'T'));
         return date.toLocaleDateString();
       }
     },
     { 
       data: 'summary', 
       title: 'Summary',
-      render: renderFullTextWithClick
+      render: renderHeightRestrictedText
     },
     { 
       data: 'taskToImprove_text', 
       title: 'Task to Improve',
-      render: renderFullTextWithClick
+      render: renderHeightRestrictedText
     },
     { 
       data: 'taskToImprove_quality', 
@@ -214,7 +290,7 @@ $(document).ready(function() {
     { 
       data: 'currentProcess_text', 
       title: 'Current Process',
-      render: renderFullTextWithClick
+      render: renderHeightRestrictedText
     },
     { 
       data: 'currentProcess_quality', 
@@ -226,7 +302,7 @@ $(document).ready(function() {
     { 
       data: 'timeEffort_text', 
       title: 'Time/Effort',
-      render: renderFullTextWithClick
+      render: renderHeightRestrictedText
     },
     { 
       data: 'timeEffort_quality', 
@@ -238,7 +314,7 @@ $(document).ready(function() {
     { 
       data: 'benefitingTeam_text', 
       title: 'Benefiting Team',
-      render: renderFullTextWithClick
+      render: renderHeightRestrictedText
     },
     { 
       data: 'benefitingTeam_quality', 
@@ -250,7 +326,7 @@ $(document).ready(function() {
     { 
       data: 'successMeasurement_text', 
       title: 'Success Measurement',
-      render: renderFullTextWithClick
+      render: renderHeightRestrictedText
     },
     { 
       data: 'successMeasurement_quality', 
@@ -262,7 +338,7 @@ $(document).ready(function() {
     { 
       data: 'dataSources_text', 
       title: 'Data Sources',
-      render: renderFullTextWithClick
+      render: renderHeightRestrictedText
     },
     { 
       data: 'dataSources_quality', 
@@ -274,7 +350,7 @@ $(document).ready(function() {
     { 
       data: 'unintendedOutcomes_text', 
       title: 'Unintended Outcomes',
-      render: renderFullTextWithClick
+      render: renderHeightRestrictedText
     },
     { 
       data: 'unintendedOutcomes_quality', 
@@ -286,7 +362,7 @@ $(document).ready(function() {
     { 
       data: 'aiCandidacy_text', 
       title: 'AI Candidacy',
-      render: renderFullTextWithClick
+      render: renderHeightRestrictedText
     },
     { 
       data: 'aiCandidacy_quality', 
@@ -310,7 +386,36 @@ $(document).ready(function() {
     columns: columns,
     pageLength: 10,
     lengthMenu: [ [10, 25, 50, -1], [10, 25, 50, "All"] ],
-    responsive: true,
+    responsive: {
+      details: {
+        display: $.fn.dataTable.Responsive.display.childRowImmediate,
+        type: 'none',
+        renderer: function(api, rowIdx, columns) {
+          const data = $.map(columns, function(col, i) {
+            // Only render hidden columns with content
+            if (!col.hidden || !col.data) return '';
+            
+            // Format for quality scores
+            let content = col.data;
+            if (col.title === 'Q' && content) {
+              let className = "quality-med";
+              if (content >= 4) className = "quality-high";
+              if (content <= 2) className = "quality-low";
+              content = `<span class="quality-score ${className}">${content}</span>`;
+            }
+            
+            return `<tr>
+                      <td><strong>${col.title}:</strong></td>
+                      <td>${content}</td>
+                    </tr>`;
+          }).join('');
+          
+          return data ? 
+            $('<table/>').append(data) : 
+            false;
+        }
+      }
+    },
     order: [[0, 'desc']], // Sort by ID descending by default (newest first)
     columnDefs: [
       { responsivePriority: 1, targets: [0, 1, 2, 3] }, // These columns show first in responsive view
@@ -318,13 +423,27 @@ $(document).ready(function() {
     ]
   });
 
-  // Add click event for text cells to show modal
+  // Add click event for text cells to show modal with quality
   $('#ideasTable tbody').on('click', '.full-text-cell', function() {
-    const text = $(this).text();
-    const columnIndex = table.cell($(this).closest('td')).index().column;
+    const cellIndex = table.cell($(this).closest('td')).index();
+    const columnIndex = cellIndex.column;
+    const rowIndex = cellIndex.row;
     const columnName = columns[columnIndex].title;
+    const text = $(this).text();
     
-    showFullText(columnName, text);
+    // Find the associated quality score if it exists
+    let quality = undefined;
+    if (columnName !== 'Summary') { // The only text field without a quality score
+      // Determine which quality column corresponds to this text
+      const qualityColIndex = columnIndex + 1; // Quality column is right after text column
+      
+      // Only proceed if the next column is actually a quality column
+      if (qualityColIndex < columns.length && columns[qualityColIndex].title === 'Q') {
+        quality = table.cell(rowIndex, qualityColIndex).data();
+      }
+    }
+    
+    showFullText(columnName, text, quality);
   });
 
   // CSV Export Functionality
