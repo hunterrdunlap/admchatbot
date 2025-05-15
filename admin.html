@@ -71,6 +71,21 @@
     .quality-low { background-color: #ffcdd2; color: #c62828; }
     .quality-med { background-color: #fff9c4; color: #f57f17; }
     .quality-high { background-color: #c8e6c9; color: #2e7d32; }
+    
+    /* Add style for full text cells */
+    .full-text-cell {
+      cursor: pointer;
+      white-space: normal; /* Allow text to wrap */
+      word-break: break-word; /* Break long words if needed */
+    }
+    .full-text-cell:hover {
+      background-color: #f5f5f5; /* Light gray background on hover */
+    }
+    /* Make sure the table cells can expand */
+    table.dataTable td {
+      white-space: normal;
+      word-break: break-word;
+    }
   </style>
 </head>
 <body>
@@ -157,10 +172,10 @@ $(document).ready(function() {
     return `<span class="quality-score ${className}">${quality}</span>`;
   }
   
-  // Text renderer for truncation
-  function renderTruncatedText(data, type, row, meta) {
+  // Text renderer for full text display with click capability
+  function renderFullTextWithClick(data, type, row, meta) {
     if (type === 'display' && data) {
-      return `<div class="truncate-text" title="Click to view full text" data-full-text="${encodeURIComponent(data)}">${data.substring(0, 50)}${data.length > 50 ? '...' : ''}</div>`;
+      return `<div class="full-text-cell" title="Click to view in popup">${data}</div>`;
     }
     return data;
   }
@@ -182,14 +197,12 @@ $(document).ready(function() {
     { 
       data: 'summary', 
       title: 'Summary',
-      width: "250px",
-      render: renderTruncatedText
+      render: renderFullTextWithClick
     },
     { 
       data: 'taskToImprove_text', 
       title: 'Task to Improve',
-      width: "200px",
-      render: renderTruncatedText
+      render: renderFullTextWithClick
     },
     { 
       data: 'taskToImprove_quality', 
@@ -201,8 +214,7 @@ $(document).ready(function() {
     { 
       data: 'currentProcess_text', 
       title: 'Current Process',
-      width: "200px",
-      render: renderTruncatedText
+      render: renderFullTextWithClick
     },
     { 
       data: 'currentProcess_quality', 
@@ -214,8 +226,7 @@ $(document).ready(function() {
     { 
       data: 'timeEffort_text', 
       title: 'Time/Effort',
-      width: "150px",
-      render: renderTruncatedText
+      render: renderFullTextWithClick
     },
     { 
       data: 'timeEffort_quality', 
@@ -227,8 +238,7 @@ $(document).ready(function() {
     { 
       data: 'benefitingTeam_text', 
       title: 'Benefiting Team',
-      width: "150px",
-      render: renderTruncatedText
+      render: renderFullTextWithClick
     },
     { 
       data: 'benefitingTeam_quality', 
@@ -240,8 +250,7 @@ $(document).ready(function() {
     { 
       data: 'successMeasurement_text', 
       title: 'Success Measurement',
-      width: "200px",
-      render: renderTruncatedText
+      render: renderFullTextWithClick
     },
     { 
       data: 'successMeasurement_quality', 
@@ -253,8 +262,7 @@ $(document).ready(function() {
     { 
       data: 'dataSources_text', 
       title: 'Data Sources',
-      width: "200px",
-      render: renderTruncatedText
+      render: renderFullTextWithClick
     },
     { 
       data: 'dataSources_quality', 
@@ -266,8 +274,7 @@ $(document).ready(function() {
     { 
       data: 'unintendedOutcomes_text', 
       title: 'Unintended Outcomes',
-      width: "200px",
-      render: renderTruncatedText
+      render: renderFullTextWithClick
     },
     { 
       data: 'unintendedOutcomes_quality', 
@@ -279,8 +286,7 @@ $(document).ready(function() {
     { 
       data: 'aiCandidacy_text', 
       title: 'AI Candidacy',
-      width: "200px",
-      render: renderTruncatedText
+      render: renderFullTextWithClick
     },
     { 
       data: 'aiCandidacy_quality', 
@@ -312,13 +318,13 @@ $(document).ready(function() {
     ]
   });
 
-  // Add click event for truncated text to show modal
-  $('#ideasTable tbody').on('click', '.truncate-text', function() {
-    const fullText = decodeURIComponent($(this).attr('data-full-text'));
+  // Add click event for text cells to show modal
+  $('#ideasTable tbody').on('click', '.full-text-cell', function() {
+    const text = $(this).text();
     const columnIndex = table.cell($(this).closest('td')).index().column;
     const columnName = columns[columnIndex].title;
     
-    showFullText(columnName, fullText);
+    showFullText(columnName, text);
   });
 
   // CSV Export Functionality
