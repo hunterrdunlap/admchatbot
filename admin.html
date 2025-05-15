@@ -216,11 +216,9 @@
     
     <div class="chart-container">
       <h3>Common Words in Summaries</h3>
-      <canvas id="wordFrequencyChart"></canvas>
-    </div>
-    
-    <div class="word-cloud-container" id="wordCloud">
-      <!-- Word cloud will be generated here -->
+      <div class="word-cloud-container" id="wordCloud">
+        <!-- Word cloud will be generated here -->
+      </div>
     </div>
   </div>
   
@@ -545,23 +543,40 @@ $(document).ready(function() {
   }
   
   function initializeCharts(data) {
-    // Prepare data for quality score distribution chart
-    const qualityCategories = ['Task to Improve', 'Current Process', 'Time/Effort', 'Benefiting Team', 
-                              'Success Measurement', 'Data Sources', 'Unintended Outcomes', 'AI Candidacy'];
+    console.log("Data for charts:", data); // Debug logging
     
-    const qualityScores = qualityCategories.map(category => {
-      // Convert category to corresponding column name
-      const columnName = category.replace(/\s+/g, '').toLowerCase() + '_quality';
-      
+    // Prepare data for quality score distribution chart
+    const qualityFields = [
+      { field: 'taskToImprove_quality', label: 'Task to Improve' },
+      { field: 'currentProcess_quality', label: 'Current Process' },
+      { field: 'timeEffort_quality', label: 'Time/Effort' },
+      { field: 'benefitingTeam_quality', label: 'Benefiting Team' },
+      { field: 'successMeasurement_quality', label: 'Success Measurement' },
+      { field: 'dataSources_quality', label: 'Data Sources' },
+      { field: 'unintendedOutcomes_quality', label: 'Unintended Outcomes' },
+      { field: 'aiCandidacy_quality', label: 'AI Candidacy' }
+    ];
+    
+    const qualityScores = qualityFields.map(item => {
       // Calculate average quality score
-      const scores = data.map(item => item[columnName]).filter(score => score !== null && score !== undefined);
-      const average = scores.reduce((sum, score) => sum + score, 0) / (scores.length || 1);
+      const scores = data.map(row => {
+        const score = row[item.field];
+        // Convert to number if it's a string or ensure it's a valid number
+        return (score !== null && score !== undefined) ? Number(score) : null;
+      }).filter(score => score !== null);
+      
+      console.log(`Scores for ${item.label}:`, scores); // Debug logging
+      
+      const sum = scores.reduce((acc, val) => acc + val, 0);
+      const average = scores.length > 0 ? sum / scores.length : 0;
       
       return {
-        category: category,
+        category: item.label,
         average: parseFloat(average.toFixed(2))
       };
     });
+    
+    console.log("Processed quality scores:", qualityScores); // Debug logging
     
     // Create quality score chart
     const qualityCtx = document.getElementById('qualityChart').getContext('2d');
@@ -677,55 +692,15 @@ $(document).ready(function() {
       }
     });
     
-    // Get top 20 words by frequency
-    const topWords = Object.keys(wordFrequency)
-                          .map(word => ({ word, count: wordFrequency[word] }))
-                          .sort((a, b) => b.count - a.count)
-                          .slice(0, 20);
-    
-    // Create word frequency chart
-    const wordFrequencyCtx = document.getElementById('wordFrequencyChart').getContext('2d');
-    new Chart(wordFrequencyCtx, {
-      type: 'bar',
-      data: {
-        labels: topWords.map(item => item.word),
-        datasets: [{
-          label: 'Frequency',
-          data: topWords.map(item => item.count),
-          backgroundColor: '#5E8C6A',
-          borderColor: '#4A7055',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        indexAxis: 'y',  // Horizontal bar chart
-        scales: {
-          x: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: 'Frequency'
-            }
-          }
-        },
-        plugins: {
-          title: {
-            display: true,
-            text: 'Most Common Words in Summaries'
-          }
-        }
-      }
-    });
-    
-    // Create a simple word cloud
-    const wordCloud = document.getElementById('wordCloud');
-    wordCloud.innerHTML = '';
-    
     // Use top 50 words for the cloud
     const cloudWords = Object.keys(wordFrequency)
                             .map(word => ({ word, count: wordFrequency[word] }))
                             .sort((a, b) => b.count - a.count)
                             .slice(0, 50);
+    
+    // Create a more visually appealing word cloud
+    const wordCloud = document.getElementById('wordCloud');
+    wordCloud.innerHTML = '';
     
     // Find max frequency for scaling
     const maxFrequency = Math.max(...cloudWords.map(item => item.count));
@@ -736,19 +711,24 @@ $(document).ready(function() {
       wordElement.classList.add('word-item');
       wordElement.textContent = item.word;
       
-      // Scale font size based on frequency
-      const fontSize = 14 + (item.count / maxFrequency) * 30;
+      // Scale font size based on frequency (larger range)
+      const fontSize = 16 + (item.count / maxFrequency) * 36;
       wordElement.style.fontSize = `${fontSize}px`;
       
-      // Set color based on frequency
-      const colorIntensity = Math.round(50 + (item.count / maxFrequency) * 50);
-      wordElement.style.color = `rgb(${70 - colorIntensity/4}, ${110 - colorIntensity/8}, ${80 - colorIntensity/8})`;
+      // Set color based on frequency (nicer gradient)
+      const hue = 120 + Math.floor((item.count / maxFrequency) * 60); // Green to blue-green range
+      const saturation = 50 + Math.floor((item.count / maxFrequency) * 30);
+      const lightness = 45 - Math.floor((item.count / maxFrequency) * 15);
+      wordElement.style.color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+      wordElement.style.fontWeight = item.count > maxFrequency * 0.7 ? 'bold' : 'normal';
       
-      // Position randomly in the container
+      // Position more intelligently in the container
       const left = Math.random() * 80; // Keep away from edges
       const top = Math.random() * 80;
       wordElement.style.left = `${left}%`;
       wordElement.style.top = `${top}%`;
+      wordElement.style.padding = '5px';
+      wordElement.style.zIndex = Math.floor(item.count / maxFrequency * 10);
       
       // Add to cloud
       wordCloud.appendChild(wordElement);
