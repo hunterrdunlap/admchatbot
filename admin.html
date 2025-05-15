@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard - ADM Alligator Agent</title>
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.dataTables.min.css">
   <style>
     body { font-family: system-ui, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
     #admin-container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -19,13 +18,26 @@
     .dt-button:hover, button#exportCsvBtn:hover { background-color: #4A7055; }
     #exportCsvBtn { margin-left: 10px; }
     
-    /* Improved text handling */
-    .truncate-text {
-      max-width: 250px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      cursor: pointer;
+    /* Table container with horizontal scroll */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      margin-bottom: 20px;
+    }
+    
+    /* Cell styles for text content with height restriction */
+    .text-cell {
+      max-height: 100px;
+      overflow-y: auto;
+      width: 300px; /* Fixed width for text columns */
+      max-width: 300px;
+      white-space: normal;
+      word-break: break-word;
+      cursor: pointer; /* Show that it's clickable */
+    }
+    
+    .text-cell:hover {
+      background-color: #f5f5f5; /* Hover effect */
     }
     
     /* Modal styles for showing full text */
@@ -59,82 +71,7 @@
     }
     .close-modal:hover { color: black; }
     
-    /* Better spacing for quality scores */
-    .quality-score {
-      text-align: center;
-      font-weight: bold;
-      padding: 2px 6px;
-      border-radius: 3px;
-      display: inline-block;
-      min-width: 20px;
-    }
-    .quality-low { background-color: #ffcdd2; color: #c62828; }
-    .quality-med { background-color: #fff9c4; color: #f57f17; }
-    .quality-high { background-color: #c8e6c9; color: #2e7d32; }
-    
-    /* Add style for full text cells */
-    .full-text-cell {
-      cursor: pointer;
-      white-space: normal; /* Allow text to wrap */
-      word-break: break-word; /* Break long words if needed */
-    }
-    .full-text-cell:hover {
-      background-color: #f5f5f5; /* Light gray background on hover */
-    }
-    /* Make sure the table cells can expand */
-    table.dataTable td {
-      white-space: normal;
-      word-break: break-word;
-    }
-    
-    /* Style for the responsive child rows */
-    .child tr td:first-child {
-      width: 150px;
-      font-weight: bold;
-      vertical-align: top;
-      padding-right: 10px;
-    }
-    
-    .child tr td:last-child {
-      white-space: normal;
-      word-break: break-word;
-    }
-    
-    /* Make the child rows better spaced */
-    .child table {
-      width: 100%;
-    }
-    
-    .child tr {
-      border-bottom: 1px solid #eee;
-    }
-    
-    .child tr:last-child {
-      border-bottom: none;
-    }
-    
-    /* Add styles for height-restricted cells with ellipsis */
-    .height-restricted {
-      max-height: 100px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      display: -webkit-box;
-      -webkit-line-clamp: 4; /* Restrict to 4 lines */
-      -webkit-box-orient: vertical;
-      cursor: pointer;
-      position: relative;
-    }
-    
-    .height-restricted::after {
-      content: "...";
-      position: absolute;
-      bottom: 0;
-      right: 0;
-      background-color: white;
-      padding: 0 4px;
-    }
-    
-    /* Update modal styles to show related quality score */
+    /* Modal header with quality score */
     .modal-header {
       display: flex;
       justify-content: space-between;
@@ -147,6 +84,25 @@
     .modal-quality {
       margin-left: 15px;
     }
+    
+    /* Quality score styling */
+    .quality-score {
+      text-align: center;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 3px;
+      display: inline-block;
+      min-width: 20px;
+    }
+    .quality-low { background-color: #ffcdd2; color: #c62828; }
+    .quality-med { background-color: #fff9c4; color: #f57f17; }
+    .quality-high { background-color: #c8e6c9; color: #2e7d32; }
+    
+    /* Fixed-size columns */
+    .id-col { width: 50px; }
+    .clock-col { width: 80px; }
+    .date-col { width: 100px; }
+    .q-col { width: 40px; text-align: center; }
   </style>
 </head>
 <body>
@@ -154,35 +110,38 @@
 <div id="admin-container">
   <h1>Project Ideas - Admin Dashboard</h1>
   <button id="exportCsvBtn">Export to CSV</button>
-  <table id="ideasTable" class="display responsive nowrap" style="width:100%">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Clock ID</th>
-        <th>Date</th>
-        <th>Summary</th>
-        <th>Task to Improve</th>
-        <th>Q</th>
-        <th>Current Process</th>
-        <th>Q</th>
-        <th>Time/Effort</th>
-        <th>Q</th>
-        <th>Benefiting Team</th>
-        <th>Q</th>
-        <th>Success Measurement</th>
-        <th>Q</th>
-        <th>Data Sources</th>
-        <th>Q</th>
-        <th>Unintended Outcomes</th>
-        <th>Q</th>
-        <th>AI Candidacy</th>
-        <th>Q</th>
-        <th>Session ID</th>
-      </tr>
-    </thead>
-    <tbody>
-    </tbody>
-  </table>
+  
+  <div class="table-container">
+    <table id="ideasTable" class="display nowrap" style="width:100%">
+      <thead>
+        <tr>
+          <th class="id-col">ID</th>
+          <th class="clock-col">Clock ID</th>
+          <th class="date-col">Date</th>
+          <th>Summary</th>
+          <th>Task to Improve</th>
+          <th class="q-col">Q</th>
+          <th>Current Process</th>
+          <th class="q-col">Q</th>
+          <th>Time/Effort</th>
+          <th class="q-col">Q</th>
+          <th>Benefiting Team</th>
+          <th class="q-col">Q</th>
+          <th>Success Measurement</th>
+          <th class="q-col">Q</th>
+          <th>Data Sources</th>
+          <th class="q-col">Q</th>
+          <th>Unintended Outcomes</th>
+          <th class="q-col">Q</th>
+          <th>AI Candidacy</th>
+          <th class="q-col">Q</th>
+          <th>Session ID</th>
+        </tr>
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <!-- Modal for displaying full text -->
@@ -199,7 +158,6 @@
 
 <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
 <script>
 $(document).ready(function() {
   // Setup modal functionality
@@ -249,21 +207,21 @@ $(document).ready(function() {
     return `<span class="quality-score ${className}">${quality}</span>`;
   }
   
-  // Text renderer for height-restricted text with click capability
-  function renderHeightRestrictedText(data, type, row, meta) {
+  // Text renderer for scrollable cells
+  function renderTextCell(data, type, row, meta) {
     if (type === 'display' && data) {
-      return `<div class="height-restricted full-text-cell" title="Click to view in popup">${data}</div>`;
+      return `<div class="text-cell" title="Click to view in popup">${data}</div>`;
     }
     return data;
   }
 
   const columns = [
-    { data: 'id', title: 'ID', width: "40px" },
-    { data: 'clockId', title: 'Clock ID', width: "70px" },
+    { data: 'id', title: 'ID', className: 'id-col' },
+    { data: 'clockId', title: 'Clock ID', className: 'clock-col' },
     { 
       data: 'createdAt',
       title: 'Date',
-      width: "100px",
+      className: 'date-col',
       render: function(data) {
         if (!data) return 'N/A';
         const date = new Date(data.replace(' ', 'T'));
@@ -273,108 +231,108 @@ $(document).ready(function() {
     { 
       data: 'summary', 
       title: 'Summary',
-      render: renderHeightRestrictedText
+      render: renderTextCell,
+      className: 'text-cell'
     },
     { 
       data: 'taskToImprove_text', 
       title: 'Task to Improve',
-      render: renderHeightRestrictedText
+      render: renderTextCell,
+      className: 'text-cell'
     },
     { 
       data: 'taskToImprove_quality', 
       title: 'Q',
-      width: "30px",
       render: formatQuality,
-      className: 'dt-center'
+      className: 'q-col'
     },
     { 
       data: 'currentProcess_text', 
       title: 'Current Process',
-      render: renderHeightRestrictedText
+      render: renderTextCell,
+      className: 'text-cell'
     },
     { 
       data: 'currentProcess_quality', 
       title: 'Q',
-      width: "30px",
       render: formatQuality,
-      className: 'dt-center'
+      className: 'q-col'
     },
     { 
       data: 'timeEffort_text', 
       title: 'Time/Effort',
-      render: renderHeightRestrictedText
+      render: renderTextCell,
+      className: 'text-cell'
     },
     { 
       data: 'timeEffort_quality', 
       title: 'Q',
-      width: "30px",
       render: formatQuality,
-      className: 'dt-center'
+      className: 'q-col'
     },
     { 
       data: 'benefitingTeam_text', 
       title: 'Benefiting Team',
-      render: renderHeightRestrictedText
+      render: renderTextCell,
+      className: 'text-cell'
     },
     { 
       data: 'benefitingTeam_quality', 
       title: 'Q',
-      width: "30px",
       render: formatQuality,
-      className: 'dt-center'
+      className: 'q-col'
     },
     { 
       data: 'successMeasurement_text', 
       title: 'Success Measurement',
-      render: renderHeightRestrictedText
+      render: renderTextCell,
+      className: 'text-cell'
     },
     { 
       data: 'successMeasurement_quality', 
       title: 'Q',
-      width: "30px",
       render: formatQuality,
-      className: 'dt-center'
+      className: 'q-col'
     },
     { 
       data: 'dataSources_text', 
       title: 'Data Sources',
-      render: renderHeightRestrictedText
+      render: renderTextCell,
+      className: 'text-cell'
     },
     { 
       data: 'dataSources_quality', 
       title: 'Q',
-      width: "30px",
       render: formatQuality,
-      className: 'dt-center'
+      className: 'q-col'
     },
     { 
       data: 'unintendedOutcomes_text', 
       title: 'Unintended Outcomes',
-      render: renderHeightRestrictedText
+      render: renderTextCell,
+      className: 'text-cell'
     },
     { 
       data: 'unintendedOutcomes_quality', 
       title: 'Q',
-      width: "30px",
       render: formatQuality,
-      className: 'dt-center'
+      className: 'q-col'
     },
     { 
       data: 'aiCandidacy_text', 
       title: 'AI Candidacy',
-      render: renderHeightRestrictedText
+      render: renderTextCell,
+      className: 'text-cell'
     },
     { 
       data: 'aiCandidacy_quality', 
       title: 'Q',
-      width: "30px",
       render: formatQuality,
-      className: 'dt-center'
+      className: 'q-col'
     },
     { 
       data: 'sessionId', 
-      title: 'Session ID',
-      visible: false // Hide by default as it's not usually needed
+      title: 'Session ID'
     }
   ];
 
@@ -386,45 +344,15 @@ $(document).ready(function() {
     columns: columns,
     pageLength: 10,
     lengthMenu: [ [10, 25, 50, -1], [10, 25, 50, "All"] ],
-    responsive: {
-      details: {
-        display: $.fn.dataTable.Responsive.display.childRowImmediate,
-        type: 'none',
-        renderer: function(api, rowIdx, columns) {
-          const data = $.map(columns, function(col, i) {
-            // Only render hidden columns with content
-            if (!col.hidden || !col.data) return '';
-            
-            // Format for quality scores
-            let content = col.data;
-            if (col.title === 'Q' && content) {
-              let className = "quality-med";
-              if (content >= 4) className = "quality-high";
-              if (content <= 2) className = "quality-low";
-              content = `<span class="quality-score ${className}">${content}</span>`;
-            }
-            
-            return `<tr>
-                      <td><strong>${col.title}:</strong></td>
-                      <td>${content}</td>
-                    </tr>`;
-          }).join('');
-          
-          return data ? 
-            $('<table/>').append(data) : 
-            false;
-        }
-      }
-    },
+    scrollX: true, // Enable horizontal scrolling
     order: [[0, 'desc']], // Sort by ID descending by default (newest first)
-    columnDefs: [
-      { responsivePriority: 1, targets: [0, 1, 2, 3] }, // These columns show first in responsive view
-      { responsivePriority: 2, targets: [4, 6, 8, 10, 12, 14, 16, 18] } // Text content columns next priority
-    ]
+    fixedColumns: {
+      left: 3 // Fix the first three columns (ID, Clock ID, Date)
+    }
   });
 
   // Add click event for text cells to show modal with quality
-  $('#ideasTable tbody').on('click', '.full-text-cell', function() {
+  $('#ideasTable tbody').on('click', '.text-cell', function() {
     const cellIndex = table.cell($(this).closest('td')).index();
     const columnIndex = cellIndex.column;
     const rowIndex = cellIndex.row;
