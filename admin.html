@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard - ADM Alligator Agent</title>
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.dataTables.min.css">
   <style>
     body { font-family: system-ui, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
     #admin-container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -17,6 +18,59 @@
     }
     .dt-button:hover, button#exportCsvBtn:hover { background-color: #4A7055; }
     #exportCsvBtn { margin-left: 10px; }
+    
+    /* Improved text handling */
+    .truncate-text {
+      max-width: 250px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+    }
+    
+    /* Modal styles for showing full text */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.4);
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: 10% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+      max-width: 800px;
+      border-radius: 8px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    .close-modal {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close-modal:hover { color: black; }
+    
+    /* Better spacing for quality scores */
+    .quality-score {
+      text-align: center;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 3px;
+      display: inline-block;
+      min-width: 20px;
+    }
+    .quality-low { background-color: #ffcdd2; color: #c62828; }
+    .quality-med { background-color: #fff9c4; color: #f57f17; }
+    .quality-high { background-color: #c8e6c9; color: #2e7d32; }
   </style>
 </head>
 <body>
@@ -24,30 +78,30 @@
 <div id="admin-container">
   <h1>Project Ideas - Admin Dashboard</h1>
   <button id="exportCsvBtn">Export to CSV</button>
-  <table id="ideasTable" class="display" style="width:100%">
+  <table id="ideasTable" class="display responsive nowrap" style="width:100%">
     <thead>
       <tr>
         <th>ID</th>
-        <th>Session ID</th>
         <th>Clock ID</th>
+        <th>Date</th>
         <th>Summary</th>
         <th>Task to Improve</th>
-        <th>Task Quality</th>
+        <th>Q</th>
         <th>Current Process</th>
-        <th>Process Quality</th>
+        <th>Q</th>
         <th>Time/Effort</th>
-        <th>Effort Quality</th>
+        <th>Q</th>
         <th>Benefiting Team</th>
-        <th>Team Quality</th>
+        <th>Q</th>
         <th>Success Measurement</th>
-        <th>Success Quality</th>
+        <th>Q</th>
         <th>Data Sources</th>
-        <th>Data Quality</th>
+        <th>Q</th>
         <th>Unintended Outcomes</th>
-        <th>Outcomes Quality</th>
+        <th>Q</th>
         <th>AI Candidacy</th>
-        <th>Candidacy Quality</th>
-        <th>Timestamp</th>
+        <th>Q</th>
+        <th>Session ID</th>
       </tr>
     </thead>
     <tbody>
@@ -55,52 +109,217 @@
   </table>
 </div>
 
+<!-- Modal for displaying full text -->
+<div id="textModal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal">&times;</span>
+    <h3 id="modal-title">Full Text</h3>
+    <p id="modal-text"></p>
+  </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
 <script>
 $(document).ready(function() {
+  // Setup modal functionality
+  const modal = document.getElementById("textModal");
+  const modalTitle = document.getElementById("modal-title");
+  const modalText = document.getElementById("modal-text");
+  const closeModal = document.getElementsByClassName("close-modal")[0];
+  
+  closeModal.onclick = function() {
+    modal.style.display = "none";
+  }
+  
+  window.onclick = function(event) {
+    if (event.target == modal) {
+      modal.style.display = "none";
+    }
+  }
+  
+  // Function to show full text in modal
+  function showFullText(title, text) {
+    modalTitle.textContent = title;
+    modalText.textContent = text;
+    modal.style.display = "block";
+  }
+  
+  // Function to format quality scores
+  function formatQuality(quality) {
+    if (!quality) return "<span>N/A</span>";
+    
+    let className = "quality-med";
+    if (quality >= 4) className = "quality-high";
+    if (quality <= 2) className = "quality-low";
+    
+    return `<span class="quality-score ${className}">${quality}</span>`;
+  }
+  
+  // Text renderer for truncation
+  function renderTruncatedText(data, type, row, meta) {
+    if (type === 'display' && data && data.length > 50) {
+      return `<div class="truncate-text" title="Click to view full text">${data.substring(0, 50)}...</div>`;
+    }
+    return data;
+  }
+
   const columns = [
-    { data: 'id', title: 'ID' }, // Assuming there's an auto-increment ID
-    { data: 'sessionId', title: 'Session ID' },
-    { data: 'clockId', title: 'Clock ID' },
-    { data: 'summary', title: 'Summary' },
-    { data: 'taskToImprove_text', title: 'Task to Improve' },
-    { data: 'taskToImprove_quality', title: 'Task Quality' },
-    { data: 'currentProcess_text', title: 'Current Process' },
-    { data: 'currentProcess_quality', title: 'Process Quality' },
-    { data: 'timeEffort_text', title: 'Time/Effort' },
-    { data: 'timeEffort_quality', title: 'Effort Quality' },
-    { data: 'benefitingTeam_text', title: 'Benefiting Team' },
-    { data: 'benefitingTeam_quality', title: 'Team Quality' },
-    { data: 'successMeasurement_text', title: 'Success Measurement' },
-    { data: 'successMeasurement_quality', title: 'Success Quality' },
-    { data: 'dataSources_text', title: 'Data Sources' },
-    { data: 'dataSources_quality', title: 'Data Quality' },
-    { data: 'unintendedOutcomes_text', title: 'Unintended Outcomes' },
-    { data: 'unintendedOutcomes_quality', title: 'Outcomes Quality' },
-    { data: 'aiCandidacy_text', title: 'AI Candidacy' },
-    { data: 'aiCandidacy_quality', title: 'Candidacy Quality' },
-    // Assuming your D1 table auto-generates a timestamp or you add one.
-    // If not, this column might be null or you can remove it.
+    { data: 'id', title: 'ID', width: "40px" },
+    { data: 'clockId', title: 'Clock ID', width: "70px" },
     { 
-      data: 'timestamp', // Or 'createdAt', 'insertedAt', etc.
-      title: 'Timestamp',
+      data: 'createdAt', // Changed from timestamp to createdAt
+      title: 'Date',
+      width: "100px",
       render: function(data) {
-        return data ? new Date(data).toLocaleString() : 'N/A';
+        if (!data) return 'N/A';
+        // Format the date nicely
+        const date = new Date(data.replace(' ', 'T')); // Convert MySQL datetime to JS Date
+        return date.toLocaleDateString();
       }
-    } 
+    },
+    { 
+      data: 'summary', 
+      title: 'Summary',
+      width: "250px",
+      render: renderTruncatedText
+    },
+    { 
+      data: 'taskToImprove_text', 
+      title: 'Task to Improve',
+      width: "200px",
+      render: renderTruncatedText
+    },
+    { 
+      data: 'taskToImprove_quality', 
+      title: 'Q',
+      width: "30px",
+      render: formatQuality,
+      className: 'dt-center'
+    },
+    { 
+      data: 'currentProcess_text', 
+      title: 'Current Process',
+      width: "200px",
+      render: renderTruncatedText
+    },
+    { 
+      data: 'currentProcess_quality', 
+      title: 'Q',
+      width: "30px",
+      render: formatQuality,
+      className: 'dt-center'
+    },
+    { 
+      data: 'timeEffort_text', 
+      title: 'Time/Effort',
+      width: "150px",
+      render: renderTruncatedText
+    },
+    { 
+      data: 'timeEffort_quality', 
+      title: 'Q',
+      width: "30px",
+      render: formatQuality,
+      className: 'dt-center'
+    },
+    { 
+      data: 'benefitingTeam_text', 
+      title: 'Benefiting Team',
+      width: "150px",
+      render: renderTruncatedText
+    },
+    { 
+      data: 'benefitingTeam_quality', 
+      title: 'Q',
+      width: "30px",
+      render: formatQuality,
+      className: 'dt-center'
+    },
+    { 
+      data: 'successMeasurement_text', 
+      title: 'Success Measurement',
+      width: "200px",
+      render: renderTruncatedText
+    },
+    { 
+      data: 'successMeasurement_quality', 
+      title: 'Q',
+      width: "30px",
+      render: formatQuality,
+      className: 'dt-center'
+    },
+    { 
+      data: 'dataSources_text', 
+      title: 'Data Sources',
+      width: "200px",
+      render: renderTruncatedText
+    },
+    { 
+      data: 'dataSources_quality', 
+      title: 'Q',
+      width: "30px",
+      render: formatQuality,
+      className: 'dt-center'
+    },
+    { 
+      data: 'unintendedOutcomes_text', 
+      title: 'Unintended Outcomes',
+      width: "200px",
+      render: renderTruncatedText
+    },
+    { 
+      data: 'unintendedOutcomes_quality', 
+      title: 'Q',
+      width: "30px",
+      render: formatQuality,
+      className: 'dt-center'
+    },
+    { 
+      data: 'aiCandidacy_text', 
+      title: 'AI Candidacy',
+      width: "200px",
+      render: renderTruncatedText
+    },
+    { 
+      data: 'aiCandidacy_quality', 
+      title: 'Q',
+      width: "30px",
+      render: formatQuality,
+      className: 'dt-center'
+    },
+    { 
+      data: 'sessionId', 
+      title: 'Session ID',
+      visible: false // Hide by default as it's not usually needed
+    }
   ];
 
   const table = $('#ideasTable').DataTable({
     ajax: {
-      url: '/admin/data', // Your new endpoint
-      dataSrc: '' // As the data is an array of objects
+      url: '/admin/data',
+      dataSrc: ''
     },
     columns: columns,
     pageLength: 10,
     lengthMenu: [ [10, 25, 50, -1], [10, 25, 50, "All"] ],
     responsive: true,
-    // Add search panes or other features if desired
+    order: [[0, 'desc']], // Sort by ID descending by default (newest first)
+    columnDefs: [
+      { responsivePriority: 1, targets: [0, 1, 2, 3] }, // These columns show first in responsive view
+      { responsivePriority: 2, targets: [4, 6, 8, 10, 12, 14, 16, 18] } // Text content columns next priority
+    ]
+  });
+
+  // Add click event for truncated text to show modal
+  $('#ideasTable tbody').on('click', '.truncate-text', function() {
+    const data = table.row($(this).closest('tr')).data();
+    const columnIndex = table.cell($(this).closest('td')).index().column;
+    const columnName = columns[columnIndex].title;
+    const fullText = table.cell($(this).closest('td')).data();
+    
+    showFullText(columnName, fullText);
   });
 
   // CSV Export Functionality
