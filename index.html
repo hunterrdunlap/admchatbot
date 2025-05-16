@@ -296,8 +296,6 @@
     summary: null
   };
 
-  init();
-
   function init() {
     progressList.innerHTML = ''; // Clear previous progress items before repopulating
 
@@ -311,7 +309,6 @@
     });
 
     botSay("Hi! I'm here to help you submit your AI idea. Tell me about what you're thinking, and I'll guide you through the process by asking relevant questions as we go.");
-    updateProgressDisplay(); // Ensure display is correct on init
   }
 
   function botSay(text) {
@@ -552,7 +549,6 @@
     }
     
     init(); // Re-initialize the chat and questions
-    // updateProgressDisplay(); // Not needed here as init() calls it.
   }
   
   document.getElementById('submit-another-btn').addEventListener('click', resetAndStartNewIdea);
@@ -571,7 +567,6 @@
 
   // Initial setup: Check if a clock ID flow is needed or how to start.
   // For now, we explicitly start with the clock ID view.
-  // updateProgressDisplay(); // Not needed here, called in initChatSession
 </script>
 </body>
 </html>
